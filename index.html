@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Attendance Tracker</title>
+<style>
+  :root{
+    --paper:#F6F1E7;
+    --paper-dark:#EFE7D6;
+    --ink:#1F2D3B;
+    --ink-soft:#5B6472;
+    --line:#D9CDAF;
+    --accent:#2F6F52;
+    --accent-dark:#234F3B;
+    --present:#2F6F52;
+    --absent:#B23A2E;
+    --half:#C1852A;
+    --weekend:#EAE0C8;
+    --white:#FFFDF8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    padding:28px 20px 60px;
+  }
+  h1,h2,h3{ font-family:Georgia,"Times New Roman",serif; margin:0; }
+
+  /* Header / Ledger tab */
+  .letterhead{
+    max-width:1200px;
+    margin:0 auto 22px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    border-bottom:3px solid var(--ink);
+    padding-bottom:14px;
+  }
+  .letterhead .badge{
+    width:52px;height:52px;border-radius:50%;
+    background:var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--white);font-family:Georgia,serif;font-size:22px;font-weight:bold;
+    flex-shrink:0;
+    box-shadow:0 2px 0 var(--accent-dark);
+  }
+  .letterhead h1{ font-size:26px; letter-spacing:.3px; }
+  .letterhead p{ margin:2px 0 0; color:var(--ink-soft); font-size:13px; }
+
+  .wrap{ max-width:1200px; margin:0 auto; }
+
+  /* Control panel */
+  .panel{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:16px 20px;
+    margin-bottom:18px;
+    box-shadow:0 1px 0 rgba(0,0,0,0.03);
+  }
+  .panel-title{
+    font-size:11px; text-transform:uppercase; letter-spacing:1.4px;
+    color:var(--ink-soft); font-weight:700; margin-bottom:10px;
+  }
+  .row{ display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; }
+  .field{ display:flex; flex-direction:column; gap:4px; }
+  .field label{ font-size:11.5px; color:var(--ink-soft); font-weight:600; }
+  select, input[type=text]{
+    font-family:inherit; font-size:14px; padding:8px 10px;
+    border:1px solid var(--line); border-radius:6px; background:var(--paper);
+    color:var(--ink); min-width:120px;
+  }
+  input[type=text]{ min-width:200px; }
+  select:focus, input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  .btn{
+    font-family:inherit; font-size:13.5px; font-weight:600;
+    padding:9px 16px; border-radius:6px; border:1px solid transparent;
+    cursor:pointer; transition:transform .05s ease, filter .15s ease;
+  }
+  .btn:active{ transform:translateY(1px); }
+  .btn-primary{ background:var(--accent); color:var(--white); }
+  .btn-primary:hover{ filter:brightness(1.08); }
+  .btn-ghost{ background:var(--white); color:var(--ink); border:1px solid var(--line); }
+  .btn-ghost:hover{ background:var(--paper); }
+  .btn-danger{ background:var(--white); color:var(--absent); border:1px solid var(--absent); }
+  .btn-danger:hover{ background:#FBEAE8; }
+  .btn-sm{ padding:5px 9px; font-size:12px; border-radius:5px; }
+
+  .radio-group{ display:flex; gap:10px; align-items:center; padding:8px 0; }
+  .radio-group label{ display:flex; align-items:center; gap:5px; font-size:13.5px; font-weight:500; cursor:pointer;}
+
+  /* Legend */
+  .legend{
+    display:flex; flex-wrap:wrap; gap:18px;
+    background:var(--paper-dark); border:1px dashed var(--line);
+    border-radius:8px; padding:10px 16px; margin-bottom:18px;
+    font-size:13px;
+  }
+  .legend-item{ display:flex; align-items:center; gap:8px; }
+  .legend-item .ic{ width:22px; height:22px; }
+  .legend-help{ margin-left:auto; color:var(--ink-soft); font-size:12.5px; font-style:italic; }
+
+  /* Table */
+  .sheet-wrap{
+    background:var(--white); border:1px solid var(--line); border-radius:10px;
+    overflow-x:auto; padding:6px;
+  }
+  table{ border-collapse:collapse; width:100%; min-width:900px; font-size:13px; }
+  thead th{
+    background:var(--ink); color:var(--white);
+    padding:8px 6px; font-weight:600; text-align:center;
+    position:sticky; top:0; z-index:2;
+  }
+  thead th.name-col{ text-align:left; padding-left:12px; min-width:170px; position:sticky; left:0; z-index:3;}
+  thead th.day-col{ min-width:30px; width:30px; font-size:11.5px; }
+  thead th.sum-col{ min-width:44px; font-size:10.5px; }
+
+  tbody td{ border:1px solid var(--line); text-align:center; padding:0; height:34px; }
+  tbody td.name-cell{
+    text-align:left; padding:5px 10px; white-space:nowrap; background:var(--white);
+    position:sticky; left:0; font-weight:500;
+    display:flex; align-items:center; justify-content:space-between; gap:6px;
+  }
+  tbody td.no-cell{ color:var(--ink-soft); font-size:12px; width:26px; }
+  tbody tr.group-row td{
+    background:var(--accent); color:var(--white); font-weight:700;
+    text-align:left; padding:6px 12px; letter-spacing:.5px; font-size:12px;
+    text-transform:uppercase; position:static;
+  }
+  tbody tr.empty-row td{ color:var(--ink-soft); font-style:italic; padding:10px 12px; background:var(--paper); }
+
+  td.weekend{ background:var(--weekend); }
+  td.attendance-cell{ cursor:pointer; user-select:none; }
+  td.attendance-cell:hover{ background:#EFF6F1; }
+  td.attendance-cell:focus{ outline:2px solid var(--accent); outline-offset:-2px; background:#EFF6F1;}
+  td.attendance-cell svg{ width:19px; height:19px; display:block; margin:0 auto; }
+  td.sum-cell{ font-weight:700; font-size:12px; background:var(--paper); }
+  td.remove-btn{
+    border:none; background:transparent; color:var(--absent); cursor:pointer;
+    font-size:14px; line-height:1; padding:2px 4px; border-radius:4px; flex-shrink:0;
+  }
+  td.remove-btn:hover{ background:#FBEAE8; }
+
+  tfoot td{ border:1px solid var(--line); text-align:center; font-weight:700; background:var(--paper-dark); font-size:12px; padding:6px 4px;}
+  tfoot td.name-cell{ text-align:left; padding-left:12px; position:sticky; left:0; background:var(--paper-dark);}
+
+  .toolbar{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .hint{ font-size:12px; color:var(--ink-soft); margin-top:8px; }
+
+  @media print{
+    body{ padding:0; background:white; }
+    .panel, .toolbar, .legend-help, .remove-btn{ display:none !important; }
+    .legend{ border:1px solid #999; }
+    .sheet-wrap{ border:none; }
+    thead th{ background:#222 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="letterhead">
+  <div class="badge">A</div>
+  <div>
+    <h1>Class Attendance Tracker</h1>
+    <p>Daily attendance record — Department of Education</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- Section & Date controls -->
+  <div class="panel">
+    <div class="panel-title">Class Record Setup</div>
+    <div class="row">
+      <div class="field">
+        <label for="sectionInput">Section</label>
+        <input type="text" id="sectionInput" placeholder="e.g. Grade 6 - Rizal">
+      </div>
+      <div class="field">
+        <label for="monthSelect">Month</label>
+        <select id="monthSelect"></select>
+      </div>
+      <div class="field">
+        <label for="yearSelect">Year</label>
+        <select id="yearSelect"></select>
+      </div>
+      <div class="field">
+        <button class="btn btn-primary" id="printBtn">🖨 Print Sheet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add learner -->
+  <div class="panel">
+    <div class="panel-title">Add Learner</div>
+    <div class="row">
+      <div class="field">
+        <label for="studentName">Learner's Name</label>
+        <input type="text" id="studentName" placeholder="Full name">
+      </div>
+      <div class="field">
+        <label>Sex</label>
+        <div class="radio-group">
+          <label><input type="radio" name="sex" value="M" checked> Male</label>
+          <label><input type="radio" name="sex" value="F"> Female</label>
+        </div>
+      </div>
+      <div class="field">
+        <button class="btn btn-primary" id="addStudentBtn">+ Add Learner</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><svg class="ic" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" stroke="#2F6F52" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>1</b> = Present (whole day)</span></div>
+    <div class="legend-item"><svg class="ic" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19" stroke="#B23A2E" stroke-width="3" fill="none" stroke-linecap="round"/></svg><span><b>2</b> = Absent (whole day)</span></div>
+    <div class="legend-item"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#C1852A" stroke-width="1.6"/><path d="M3 12 A9 9 0 0 1 21 12 Z" fill="#C1852A"/></svg><span><b>3</b> = Present AM only</span></div>
+    <div class="legend-item"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#C1852A" stroke-width="1.6"/><path d="M3 12 A9 9 0 0 0 21 12 Z" fill="#C1852A"/></svg><span><b>4</b> = Present PM only</span></div>
+    <div class="legend-help">Click a cell to cycle 1→2→3→4→blank, or click then type 1-4 (0 to clear)</div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-ghost" id="saveBtn">⬇ Save Data (.json)</button>
+    <label class="btn btn-ghost" style="margin:0;">
+      ⬆ Load Data (.json)
+      <input type="file" id="loadInput" accept="application/json" style="display:none;">
+    </label>
+    <button class="btn btn-danger" id="clearMonthBtn">Clear this month's marks</button>
+  </div>
+
+  <div class="sheet-wrap">
+    <table id="sheetTable">
+      <thead><tr id="headRow"></tr></thead>
+      <tbody id="bodyRows"></tbody>
+      <tfoot id="footRows"></tfoot>
+    </table>
+  </div>
+  <p class="hint">Tip: use "Save Data" regularly to export a backup file — this page does not auto-save between browser sessions.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- State ----------
+  const today = new Date();
+  const state = {
+    section: "11-TECHPRO",
+    month: 6,
+    year: 2026,
+    students: [      // {id, name, sex:'M'|'F'}
+      { id: 1, name: "ALBERTO, JANREN N.", sex: "M" },
+      { id: 2, name: "BAUTISTA, IAN DOMINIC G.", sex: "M" },
+      { id: 3, name: "CABRAL, KENNETH G.", sex: "M" },
+      { id: 4, name: "CASTANDA, EDRICH B.", sex: "M" },
+      { id: 5, name: "DELA CRUZ, IVERSON A.", sex: "M" },
+      { id: 6, name: "DIZON, BRIAN A.", sex: "M" },
+      { id: 7, name: "ESTRAS, GIAN CARLO A.", sex: "M" },
+      { id: 8, name: "GALLEMA, ZYRIL M.", sex: "M" },
+      { id: 9, name: "LANTANO, NORVIN JR E.", sex: "M" },
+      { id: 10, name: "MIGUEL, LORD AXEL C.", sex: "M" },
+      { id: 11, name: "MOLINA, ANGELO M.", sex: "M" },
+      { id: 12, name: "NAYVE, JUSTIN", sex: "M" },
+      { id: 13, name: "PAMINTUAN, FERNANDO G.", sex: "M" },
+      { id: 14, name: "VERA CRUZ, RUSSEL O.", sex: "M" },
+      { id: 15, name: "VERGARA, DOMINADOR S.", sex: "M" },
+      { id: 16, name: "BALDOS, DANIELLE T.", sex: "F" },
+      { id: 17, name: "BAYSA, ELA JANE D.", sex: "F" },
+      { id: 18, name: "CABAHUG, PRINCESS RAYLENE S.", sex: "F" },
+      { id: 19, name: "CABATIN, JUSMINE B.", sex: "F" },
+      { id: 20, name: "CORPUZ, CAROLINE FHEI S.", sex: "F" },
+      { id: 21, name: "CORTEZ, CHARMAYNE PEARL R.", sex: "F" }
+    ],
+    attendance: {},     // key: `${studentId}|${year}-${month}` -> {day: state(1-4)}
+    nextId: 22
+  };
+
+  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  // ---------- Element refs ----------
+  const sectionInput = document.getElementById('sectionInput');
+  const monthSelect = document.getElementById('monthSelect');
+  const yearSelect = document.getElementById('yearSelect');
+  const studentNameInput = document.getElementById('studentName');
+  const addStudentBtn = document.getElementById('addStudentBtn');
+  const headRow = document.getElementById('headRow');
+  const bodyRows = document.getElementById('bodyRows');
+  const footRows = document.getElementById('footRows');
+  const saveBtn = document.getElementById('saveBtn');
+  const loadInput = document.getElementById('loadInput');
+  const clearMonthBtn = document.getElementById('clearMonthBtn');
+  const printBtn = document.getElementById('printBtn');
+
+  // ---------- Populate month/year dropdowns ----------
+  MONTH_NAMES.forEach((m, i) => {
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = m;
+    monthSelect.appendChild(opt);
+  });
+  monthSelect.value = state.month;
+  sectionInput.value = state.section;
+
+  const currentYear = today.getFullYear();
+  for (let y = currentYear - 5; y <= currentYear + 5; y++) {
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y;
+    yearSelect.appendChild(opt);
+  }
+  yearSelect.value = state.year;
+
+  monthSelect.addEventListener('change', () => {
+    state.month = parseInt(monthSelect.value, 10);
+    render();
+  });
+  yearSelect.addEventListener('change', () => {
+    state.year = parseInt(yearSelect.value, 10);
+    render();
+  });
+  sectionInput.addEventListener('input', () => {
+    state.section = sectionInput.value;
+  });
+
+  // ---------- Icon rendering ----------
+  function iconSVG(mark){
+    if (mark === 1) {
+      return `<svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" stroke="var(--present)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    }
+    if (mark === 2) {
+      return `<svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19" stroke="var(--absent)" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`;
+    }
+    if (mark === 3) {
+      return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="var(--half)" stroke-width="1.6"/><path d="M3 12 A9 9 0 0 1 21 12 Z" fill="var(--half)"/></svg>`;
+    }
+    if (mark === 4) {
+      return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="var(--half)" stroke-width="1.6"/><path d="M3 12 A9 9 0 0 0 21 12 Z" fill="var(--half)"/></svg>`;
+    }
+    return '';
+  }
+
+  function daysInMonth(year, month){
+    return new Date(year, month + 1, 0).getDate();
+  }
+  function isWeekend(year, month, day){
+    const d = new Date(year, month, day).getDay();
+    return d === 0 || d === 6;
+  }
+  function attKey(studentId){
+    return `${studentId}|${state.year}-${state.month}`;
+  }
+  function getMark(studentId, day){
+    const rec = state.attendance[attKey(studentId)];
+    return rec ? (rec[day] || 0) : 0;
+  }
+  function setMark(studentId, day, mark){
+    const key = attKey(studentId);
+    if (!state.attendance[key]) state.attendance[key] = {};
+    if (mark === 0) {
+      delete state.attendance[key][day];
+    } else {
+      state.attendance[key][day] = mark;
+    }
+  }
+
+  // ---------- Add / remove learners ----------
+  addStudentBtn.addEventListener('click', addStudent);
+  studentNameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addStudent();
+  });
+
+  function addStudent(){
+    const name = studentNameInput.value.trim();
+    if (!name) {
+      studentNameInput.focus();
+      studentNameInput.style.borderColor = 'var(--absent)';
+      setTimeout(() => studentNameInput.style.borderColor = '', 900);
+      return;
+    }
+    const sex = document.querySelector('input[name="sex"]:checked').value;
+    state.students.push({ id: state.nextId++, name, sex });
+    studentNameInput.value = "";
+    studentNameInput.focus();
+    render();
+  }
+
+  function removeStudent(id){
+    const s = state.students.find(s => s.id === id);
+    if (!s) return;
+    if (!confirm(`Remove "${s.name}" from the class list? This also removes their attendance marks.`)) return;
+    state.students = state.students.filter(s => s.id !== id);
+    Object.keys(state.attendance).forEach(k => {
+      if (k.startsWith(id + "|")) delete state.attendance[k];
+    });
+    render();
+  }
+
+  // ---------- Render table ----------
+  function render(){
+    const nDays = daysInMonth(state.year, state.month);
+
+    // Header
+    let h = `<th class="name-col">Learner's Name</th>`;
+    for (let d = 1; d <= nDays; d++){
+      const wk = isWeekend(state.year, state.month, d) ? ' style="background:#3a4c5c;"' : '';
+      h += `<th class="day-col"${wk}>${d}</th>`;
+    }
+    h += `<th class="sum-col">Present</th><th class="sum-col">Absent</th><th class="sum-col">Half-day</th>`;
+    headRow.innerHTML = h;
+
+    // Body
+    bodyRows.innerHTML = '';
+    const groups = [
+      { label: 'Male Learners', sex: 'M' },
+      { label: 'Female Learners', sex: 'F' }
+    ];
+
+    groups.forEach(g => {
+      const groupTr = document.createElement('tr');
+      groupTr.className = 'group-row';
+      groupTr.innerHTML = `<td colspan="${nDays + 4}">${g.label}</td>`;
+      bodyRows.appendChild(groupTr);
+
+      const list = state.students
+        .filter(s => s.sex === g.sex)
+        .sort((a,b) => a.name.localeCompare(b.name));
+
+      if (list.length === 0){
+        const emptyTr = document.createElement('tr');
+        emptyTr.className = 'empty-row';
+        emptyTr.innerHTML = `<td colspan="${nDays + 4}">No learners added yet.</td>`;
+        bodyRows.appendChild(emptyTr);
+        return;
+      }
+
+      list.forEach((s, idx) => {
+        const tr = document.createElement('tr');
+        let counts = { p:0, a:0, half:0 };
+
+        let rowHtml = `<td class="name-cell"><span>${idx+1}. ${escapeHtml(s.name)}</span>
+          <button class="remove-btn" title="Remove learner" data-id="${s.id}">✕</button></td>`;
+
+        for (let d = 1; d <= nDays; d++){
+          const mark = getMark(s.id, d);
+          if (mark === 1) counts.p++;
+          else if (mark === 2) counts.a++;
+          else if (mark === 3 || mark === 4) counts.half++;
+          const wk = isWeekend(state.year, state.month, d) ? ' weekend' : '';
+          rowHtml += `<td class="attendance-cell${wk}" tabindex="0" data-student="${s.id}" data-day="${d}">${iconSVG(mark)}</td>`;
+        }
+        rowHtml += `<td class="sum-cell" style="color:var(--present)">${counts.p}</td>`;
+        rowHtml += `<td class="sum-cell" style="color:var(--absent)">${counts.a}</td>`;
+        rowHtml += `<td class="sum-cell" style="color:var(--half)">${counts.half}</td>`;
+
+        tr.innerHTML = rowHtml;
+        bodyRows.appendChild(tr);
+      });
+    });
+
+    // Footer: daily present total
+    let footHtml = `<tr><td class="name-cell">Total Present (whole day)</td>`;
+    for (let d = 1; d <= nDays; d++){
+      let total = 0;
+      state.students.forEach(s => { if (getMark(s.id, d) === 1) total++; });
+      footHtml += `<td>${total}</td>`;
+    }
+    footHtml += `<td colspan="3"></td></tr>`;
+    footRows.innerHTML = footHtml;
+
+    attachCellHandlers();
+    attachRemoveHandlers();
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ---------- Cell interaction ----------
+  function attachCellHandlers(){
+    document.querySelectorAll('td.attendance-cell').forEach(td => {
+      td.addEventListener('click', () => {
+        const studentId = parseInt(td.dataset.student, 10);
+        const day = parseInt(td.dataset.day, 10);
+        const current = getMark(studentId, day);
+        const next = current >= 4 ? 0 : current + 1;
+        setMark(studentId, day, next);
+        td.innerHTML = iconSVG(next);
+        td.focus();
+        updateRowSummary(studentId);
+        updateFooterForDay(day);
+      });
+
+      td.addEventListener('keydown', (e) => {
+        if (['0','1','2','3','4'].includes(e.key)){
+          e.preventDefault();
+          const studentId = parseInt(td.dataset.student, 10);
+          const day = parseInt(td.dataset.day, 10);
+          const mark = parseInt(e.key, 10);
+          setMark(studentId, day, mark);
+          td.innerHTML = iconSVG(mark);
+          updateRowSummary(studentId);
+          updateFooterForDay(day);
+        } else if (e.key === 'Backspace' || e.key === 'Delete'){
+          e.preventDefault();
+          const studentId = parseInt(td.dataset.student, 10);
+          const day = parseInt(td.dataset.day, 10);
+          setMark(studentId, day, 0);
+          td.innerHTML = '';
+          updateRowSummary(studentId);
+          updateFooterForDay(day);
+        } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft'){
+          e.preventDefault();
+          const cells = Array.from(document.querySelectorAll('td.attendance-cell'));
+          const i = cells.indexOf(td);
+          const target = e.key === 'ArrowRight' ? cells[i+1] : cells[i-1];
+          if (target) target.focus();
+        }
+      });
+    });
+  }
+
+  function updateRowSummary(studentId){
+    const nDays = daysInMonth(state.year, state.month);
+    let counts = { p:0, a:0, half:0 };
+    for (let d = 1; d <= nDays; d++){
+      const mark = getMark(studentId, d);
+      if (mark === 1) counts.p++;
+      else if (mark === 2) counts.a++;
+      else if (mark === 3 || mark === 4) counts.half++;
+    }
+    const anyCell = document.querySelector(`td.attendance-cell[data-student="${studentId}"]`);
+    if (!anyCell) return;
+    const tr = anyCell.closest('tr');
+    const sumCells = tr.querySelectorAll('td.sum-cell');
+    sumCells[0].textContent = counts.p;
+    sumCells[1].textContent = counts.a;
+    sumCells[2].textContent = counts.half;
+  }
+
+  function updateFooterForDay(day){
+    let total = 0;
+    state.students.forEach(s => { if (getMark(s.id, day) === 1) total++; });
+    const footCells = footRows.querySelectorAll('tr td');
+    // index 0 is label, day 'd' is at index d
+    if (footCells[day]) footCells[day].textContent = total;
+  }
+
+  function attachRemoveHandlers(){
+    document.querySelectorAll('.remove-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeStudent(parseInt(btn.dataset.id, 10));
+      });
+    });
+  }
+
+  // ---------- Save / Load ----------
+  saveBtn.addEventListener('click', () => {
+    const payload = JSON.stringify(state, null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safeSection = (state.section || 'attendance').replace(/[^a-z0-9]+/gi, '_');
+    a.href = url;
+    a.download = `${safeSection}_attendance_backup.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  loadInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = JSON.parse(evt.target.result);
+        if (!data.students || !data.attendance) throw new Error('Invalid file');
+        state.section = data.section || "";
+        state.month = typeof data.month === 'number' ? data.month : state.month;
+        state.year = typeof data.year === 'number' ? data.year : state.year;
+        state.students = data.students || [];
+        state.attendance = data.attendance || {};
+        state.nextId = data.nextId || (Math.max(0, ...state.students.map(s => s.id)) + 1);
+        sectionInput.value = state.section;
+        monthSelect.value = state.month;
+        yearSelect.value = state.year;
+        render();
+        alert('Attendance data loaded successfully.');
+      } catch (err) {
+        alert('Could not read this file. Please choose a valid backup .json file.');
+      }
+    };
+    reader.readAsText(file);
+    loadInput.value = "";
+  });
+
+  clearMonthBtn.addEventListener('click', () => {
+    if (!confirm(`Clear all attendance marks for ${MONTH_NAMES[state.month]} ${state.year}? Learner names will stay.`)) return;
+    state.students.forEach(s => { delete state.attendance[attKey(s.id)]; });
+    render();
+  });
+
+  printBtn.addEventListener('click', () => window.print());
+
+  // ---------- Init ----------
+  render();
+})();
+</script>
+</body>
+</html>
